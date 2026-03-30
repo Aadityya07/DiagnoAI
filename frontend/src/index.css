@@ -60,11 +60,15 @@ body {
   transform: translateY(-3px);
 }
 
-/* ===== SCROLLBAR ===== */
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: rgba(54, 86, 95, 0.08); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(54, 86, 95, 0.3); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(54, 86, 95, 0.5); }
+/* ===== SCROLLBAR (Hidden but fully functional) ===== */
+.custom-scrollbar {
+  scrollbar-width: none; /* For Firefox */
+  -ms-overflow-style: none; /* For Internet Explorer and Edge */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  display: none; /* For Chrome, Safari, and Opera */
+}
 
 /* ===== RANGE INPUT ===== */
 input[type="range"] {

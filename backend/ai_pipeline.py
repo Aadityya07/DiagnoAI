@@ -58,7 +58,7 @@ def analyze_xray(image_path):
         
     except Exception as e:
         print(f"⚠️ Gemini API Error: {str(e)}")
-        return {"Pneumonia": 0.0, "Normal": 100.0, "error": "Gemini API failed. Defaulting to baseline."}
+    return {"Pneumonia": 0.0, "Normal": 100.0, "error": "Gemini API failed. Defaulting to baseline."}
 
 
 # --- 2. MULTIMODAL CLINICAL LOGIC ENGINE ---
@@ -115,14 +115,15 @@ def analyze_clinical_vitals(vitals):
 def generate_clinical_insight(radiology_results, clinical_results):
     print("🧠 Attempting Multimodal Fusion via Ollama (Mistral)...")
     prompt = f"""You are an expert AI diagnostic assistant. I am providing you with two data points for a patient:
-1. Radiology (X-Ray Model Output): {radiology_results}
-2. Clinical Vitals, EHR, Genomics & Wearables: {clinical_results}
+1. Radiology (X-Ray Output): {radiology_results}
+2. Clinical Vitals & EHR: {clinical_results}
 
-Task: 
-1. Provide a final prioritized diagnosis based on the synthesis of all modalities.
-2. Write a highly professional, explainable clinical insight detailing *why* this diagnosis was reached.
-3. Outline immediate preventive care strategies.
-Keep the response concise, structured, and strictly medical. Use bullet points."""
+Task: Provide a clinical insight. 
+IMPORTANT FORMATTING RULES:
+- Do NOT use markdown asterisks (**) or hashes (#).
+- Use HTML <b> tags to bold the names of diseases (e.g. <b>Lung Cancer</b>).
+- Keep it to 3 short, punchy paragraphs.
+- End with one clear Preventive Action."""
 
     try:
         response = requests.post('http://localhost:11434/api/generate', json={
@@ -177,22 +178,23 @@ Keep the response concise, structured, and strictly medical. Use bullet points."
 def generate_audio_recommendation(text):
     """Generates multilingual voice suggestions using ElevenLabs."""
     
-    # TEMPORARY KILL SWITCH TO SAVE CREDITS DURING DEVELOPMENT
-    print("⏸️ ElevenLabs is temporarily disabled for testing. (Remove 'return None' to activate)")
-    return None
-
     if not ELEVENLABS_API_KEY:
         print("⚠️ ElevenLabs API Key missing!")
         return None
         
     print("🎙️ Generating Voice Recommendation via ElevenLabs...")
-    url = "[https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL](https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL)"
+    url = "https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL"
     headers = {"Accept": "audio/mpeg", "Content-Type": "application/json", "xi-api-key": ELEVENLABS_API_KEY}
     
-    short_text = text.split("Preventive Action:")[-1] if "Preventive Action:" in text else "Stay alert and consult a doctor."
-    if len(short_text) > 200: short_text = short_text[:200] + "..."
+    # We will pass the full text, but let's cap it at 500 characters to save credits
+    short_text = text if len(text) < 500 else text[:500] + "..."
 
-    data = {"text": short_text, "model_id": "eleven_multilingual_v2", "voice_settings": {"stability": 0.5, "similarity_boost": 0.5}}
+    # eleven_multilingual_v2 automatically detects English, Hindi, etc.
+    data = {
+        "text": short_text, 
+        "model_id": "eleven_multilingual_v2", 
+        "voice_settings": {"stability": 0.5, "similarity_boost": 0.5}
+    }
     
     try:
         response = requests.post(url, json=data, headers=headers)

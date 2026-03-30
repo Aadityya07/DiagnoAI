@@ -26,9 +26,7 @@ def analyze_patient_data():
         image_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(image_path)
 
-        # Catch the Clinical Vitals AND the requested language (defaults to english)
         vitals = request.form.to_dict()
-        target_lang = vitals.get('language', 'en') # Ensure key in postman is 'language'
 
         # Run the Analysis
         radiology_results = analyze_xray(image_path)
@@ -37,35 +35,47 @@ def analyze_patient_data():
 
         final_text = insight.get("insight_text")
 
-        # --- THE MULTILINGUAL USP ---
-        if target_lang != 'en':
-            print(f"🌍 Translating insight to {target_lang}...")
-            try:
-                final_text = GoogleTranslator(source='auto', target=target_lang).translate(final_text)
-            except Exception as e:
-                print(f"Translation failed: {e}")
+        # --- THE MULTILINGUAL FIX ---
+        # Translate to all 3 languages instantly so the frontend can swap them
+        print("🌍 Translating insights to English, Hindi, and Marathi...")
+        insights_multilingual = {
+            "en": final_text,
+            "hi": GoogleTranslator(source='en', target='hi').translate(final_text) if final_text else "",
+            "mr": GoogleTranslator(source='en', target='mr').translate(final_text) if final_text else ""
+        }
 
-        # --- ELEVENLABS AUDIO USP ---
-        audio_base64 = None
-        # Only generate audio for non-English requests (as per your USP to save credits)
-        if target_lang != 'en':
-             audio_base64 = generate_audio_recommendation(final_text)
-
-        # Return the final payload
         return jsonify({
             "status": "success",
             "radiology_analysis": radiology_results,
             "clinical_analysis": clinical_results,
-            "explainable_insight": final_text,
+            "explainable_insight": insights_multilingual, # Now sending a dictionary!
             "confidence": insight.get("confidence"),
             "risk_level": insight.get("risk_level"),
-            "audio_recommendation": audio_base64 # Frontend will use this to play audio
+            "audio_recommendation": None 
         }), 200
 
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/generate-audio', methods=['POST'])
+def generate_audio():
+    try:
+        data = request.json
+        text = data.get('text')
+        
+        if not text:
+            return jsonify({"error": "No text provided"}), 400
+
+        audio_base64 = generate_audio_recommendation(text)
+        
+        if audio_base64:
+            return jsonify({"status": "success", "audio_base64": audio_base64}), 200
+        else:
+            return jsonify({"error": "Failed to generate audio"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+        
 if __name__ == '__main__':
     print("🚀 Omni-Diagnostics AI Backend is running on port 5000...")
     app.run(debug=True, port=5000)
