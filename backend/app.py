@@ -58,16 +58,36 @@ def analyze_patient_data():
         print(f"Error occurred: {e}")
         return jsonify({"error": str(e)}), 500
 
+# @app.route('/api/generate-audio', methods=['POST'])
+# def generate_audio():
+#     try:
+#         data = request.json
+#         text = data.get('text')
+        
+#         if not text:
+#             return jsonify({"error": "No text provided"}), 400
+
+#         audio_base64 = generate_audio_recommendation(text)
+        
+#         if audio_base64:
+#             return jsonify({"status": "success", "audio_base64": audio_base64}), 200
+#         else:
+#             return jsonify({"error": "Failed to generate audio"}), 500
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
 @app.route('/api/generate-audio', methods=['POST'])
 def generate_audio():
     try:
         data = request.json
         text = data.get('text')
+        language = data.get('language', 'en') # Extract the language
         
         if not text:
             return jsonify({"error": "No text provided"}), 400
 
-        audio_base64 = generate_audio_recommendation(text)
+        # Pass the language to the generator
+        audio_base64 = generate_audio_recommendation(text, language)
         
         if audio_base64:
             return jsonify({"status": "success", "audio_base64": audio_base64}), 200

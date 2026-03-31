@@ -40,9 +40,9 @@ export const endpoints = {
     return response.data;
   },
 
-  // ADD THIS NEW FUNCTION:
-  generateAudio: async (text) => {
-    const response = await api.post('/generate-audio', { text });
+  // Update this function inside endpoints
+  generateAudio: async (text, language) => {
+    const response = await api.post('/generate-audio', { text, language });
     return response.data;
   }
 };

@@ -21,23 +21,24 @@ export const useAnalysis = () => {
       clearInterval(progressInterval);
       setProgress(100);
       
+      const rad = response.radiology_analysis;
+      const clin = response.clinical_analysis;
+
+      // MULTIMODAL FUSION: We take the highest risk between the X-Ray and the Clinical Vitals!
       const transformedData = {
-        pneumonia: response.radiology_analysis?.Pneumonia || 0,
-        tb: response.clinical_analysis?.TB_Risk === "High" ? 85 : 15,
-        cancer: response.clinical_analysis?.Cancer_Risk === "High" ? 90 : 10,
-        diabetes: response.clinical_analysis?.Diabetes_Risk === "High" ? 88 : 12,
-        asthma: response.clinical_analysis?.Asthma_Risk === "High" ? 82 : 18,
+        pneumonia: Math.max(rad?.Pneumonia || 0, clin?.Pneumonia_Risk || 0),
+        cancer: Math.max(rad?.Lung_Cancer || 0, clin?.Cancer_Risk || 0),
+        tb: Math.max(rad?.Tuberculosis || 0, clin?.TB_Risk || 0),
+        diabetes: clin?.Diabetes_Risk || 5,
+        asthma: clin?.Asthma_Risk || 5,
         
-        // FIX: Just pass the whole dictionary we created in app.py
-        explanation: response.explainable_insight, 
-        
+        explanation: response.explainable_insight,
         confidence: response.confidence,
         riskLevel: response.risk_level,
         audioBase64: response.audio_recommendation,
-        clinicalFindings: response.clinical_analysis?.Clinical_Notes || [],
-        radiologyError: response.radiology_analysis?.error || null
+        clinicalFindings: clin?.Clinical_Notes || [],
+        radiologyError: rad?.error || null
       };
-      
       
       setAnalysisData(transformedData);
       return transformedData;

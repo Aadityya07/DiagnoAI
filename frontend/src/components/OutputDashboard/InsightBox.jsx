@@ -48,7 +48,9 @@ const InsightBox = ({ explanation }) => {
     try {
       // Clean HTML tags and markdown for the text-to-speech engine
       const cleanText = rawText.replace(/<[^>]*>?/gm, '').replace(/[*#]/g, '');
-      const response = await endpoints.generateAudio(cleanText);
+      
+      // FIX: Pass currentLanguage here!
+      const response = await endpoints.generateAudio(cleanText, currentLanguage); 
       
       if (response.audio_base64) {
         setAudioSrc(`data:audio/mpeg;base64,${response.audio_base64}`);
