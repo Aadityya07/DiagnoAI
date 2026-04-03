@@ -1,24 +1,44 @@
-# Logs
-logs
-*.log
+# =========================
+# Python & Backend
+# =========================
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# Cache & Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Uploads & Temp processing files
+backend/uploads/
+backend/temp_ocr.png
+
+# Secrets & Environment Variables
+.env
+.env.local
+
+# Optional: Ignore massive AI models if you are using Git LFS
+# (Uncomment the line below if best_model.hdf5 is larger than 100MB)
+# *.hdf5 
+
+# =========================
+# Node.js & Frontend
+# =========================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.npm/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# =========================
+# OS Generated Files
+# =========================
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+git add .
+git commit -m "feat: complete agentic AI pipeline and clean repository"

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ImageUpload from './ImageUpload';
 import VitalsForm from './VitalsForm';
 import AnalyzeButton from './AnalyzeButton';
@@ -19,6 +19,21 @@ const InputPanel = ({ onAnalyze, isAnalyzing }) => {
     weightLoss: false,
     coughDuration: ''
   });
+
+  const [missingFields, setMissingFields] = useState([]);
+
+  // Watch the form data. If the user manually types in a missing field, remove the warning!
+  // This completely ignores the "Unexplained Weight loss" toggle.
+  useEffect(() => {
+    setMissingFields(prevMissing => prevMissing.filter(field => {
+      if (field === "Age" && formData.age !== '') return false;
+      if (field === "Heart Rate" && formData.heartRate !== '') return false;
+      if (field === "O2 Saturation" && formData.o2Saturation !== '') return false;
+      if (field === "Fasting Glucose" && formData.fastingGlucose !== '') return false;
+      if (field === "HbA1c" && formData.hba1c !== '') return false;
+      return true; // Keep the warning if it's still missing
+    }));
+  }, [formData.age, formData.heartRate, formData.o2Saturation, formData.fastingGlucose, formData.hba1c]);
   
   const [uploadedImage, setUploadedImage] = useState(null);
   const [errors, setErrors] = useState({});
@@ -60,14 +75,25 @@ const InputPanel = ({ onAnalyze, isAnalyzing }) => {
       const result = await endpoints.extractVitals(file);
       if (result.status === 'success' && result.data) {
         const extracted = result.data;
+        const missing = [];
         
-        // Update the form only with values the Agent successfully found
+        // Check what LLaVA couldn't find in the report
+        if (extracted.age === null) missing.push("Age");
+        if (extracted.heart_rate === null) missing.push("Heart Rate");
+        if (extracted.o2_saturation === null) missing.push("O2 Saturation");
+        if (extracted.fasting_glucose === null) missing.push("Fasting Glucose");
+        if (extracted.hba1c === null) missing.push("HbA1c");
+        
+        setMissingFields(missing); // Update the UI warning state
+
+        // Update the form data, keeping existing values if the report was missing them
         setFormData(prev => ({
           ...prev,
+          age: extracted.age !== null ? extracted.age : prev.age,
           heartRate: extracted.heart_rate !== null ? extracted.heart_rate : prev.heartRate,
           o2Saturation: extracted.o2_saturation !== null ? extracted.o2_saturation : prev.o2Saturation,
           fastingGlucose: extracted.fasting_glucose !== null ? extracted.fasting_glucose : prev.fastingGlucose,
-          hba1c: extracted.hba1c !== null ? extracted.hba1c : prev.hba1c,
+          hba1c: extracted.hba1c !== null ? extracted.hba1c : prev.hba1c
         }));
       }
     } catch (err) {
@@ -161,6 +187,20 @@ const InputPanel = ({ onAnalyze, isAnalyzing }) => {
           style={{ display: 'none' }} 
           onChange={handleLabReportUpload}
         />
+
+        {/* Missing Data Warning Banner */}
+        {missingFields.length > 0 && (
+          <div className="animate-fadeIn" style={{ 
+            marginTop: '12px', padding: '12px', 
+            backgroundColor: 'rgba(229, 83, 83, 0.1)', border: '1px solid rgba(229, 83, 83, 0.4)', 
+            borderRadius: '12px', color: '#E55353', fontSize: '0.85rem', lineHeight: '1.5'
+          }}>
+            <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+               ⚠️ Incomplete Lab Report
+            </strong>
+            The uploaded report does not contain the following necessary details: <b>{missingFields.join(", ")}</b>. Please fill them manually.
+          </div>
+        )}
 
         {/* The rest of the manual sliders */}
         <VitalsForm formData={formData} onChange={handleFormChange} errors={errors} />

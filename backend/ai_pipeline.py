@@ -1,6 +1,7 @@
 import io
 import base64
 from gtts import gTTS
+import re
 import os
 import requests
 import time
@@ -202,34 +203,32 @@ import io
 import base64
 from gtts import gTTS
 
+
 # --- 3. HYBRID FUSION ENGINE (Mistral LLM + Fallback) ---
 def generate_clinical_insight(radiology_results, clinical_results):
     print("🧠 Attempting Multimodal Fusion via Ollama (Mistral)...")
     
-    prompt = f"""You are a strict, expert AI diagnostic assistant. Synthesize the following two data points into a comprehensive medical assessment:
-    1. Radiology (X-Ray CNN Output): {radiology_results}
-    2. Clinical Vitals & EHR: {clinical_results}
+    # 1. PYTHON DOES THE MATH (Never trust the LLM with math)
+    cancer_score = radiology_results.get("Lung_Cancer", 0)
+    cancer_evaluation = "HIGH RISK / CRITICAL" if cancer_score >= 50 else "LOW RISK / NORMAL"
+    
+    prompt = f"""You are a strict, expert AI diagnostic assistant. Synthesize these two data points into a medical assessment:
+    1. Radiology Output: {radiology_results} 
+    (CRITICAL: The math dictates this patient has {cancer_evaluation} of Lung Cancer. You MUST state that it is {cancer_evaluation}).
+    2. Clinical Vitals: {clinical_results}
 
-    STRICT LOGIC RULES:
-    - MATH RULE: Any percentage under 50% is LOW RISK. Do NOT call a number under 50% "high risk".
-    - LUNG CANCER: You must ONLY use the Radiology Output to determine Lung Cancer risk. 
-    - FORMAT: You MUST structure your exact response into two separate sections using the headers EXPLANATION: and RECOMMENDATION:
-
+    FORMAT RULES:
+    You MUST structure your response into exactly two sections using these exact uppercase headers:
     EXPLANATION:
-    [Write a rich, detailed 2-paragraph clinical insight. Start by analyzing the primary radiological findings (Explicitly list the percentage breakdown of Adenocarcinoma, Large Cell, and Squamous). Then, correlate this with their metabolic and respiratory vitals. Use professional medical terminology. Bold specific diseases and metrics with HTML <b> tags.]
+    [2 paragraphs explaining the {cancer_evaluation} diagnosis and vitals. Bold diseases with HTML <b>.]
     
     RECOMMENDATION:
-    [Write 2-3 sentences of direct clinical advice based ONLY on the elevated risks. Speak directly to the clinician. Do not use markdown here, just plain text.]
+    [2 sentences of direct clinical advice based ONLY on the actual elevated risks.]
     """
 
     def get_confidence():
         if not radiology_results or radiology_results.get("error"): return 0
-        return max(
-            radiology_results.get("Lung_Cancer", 0), 
-            radiology_results.get("Normal", 0), 
-            radiology_results.get("Pneumonia", 0), 
-            radiology_results.get("Tuberculosis", 0)
-        )
+        return max(radiology_results.get("Lung_Cancer", 0), radiology_results.get("Normal", 0))
 
     try:
         response = requests.post('http://localhost:11434/api/generate', json={
@@ -240,22 +239,24 @@ def generate_clinical_insight(radiology_results, clinical_results):
             print("✅ Mistral Fusion Successful!")
             mistral_text = response.json()['response']
             
-            # Split the text into the Visible Insight and the Hidden Audio Recommendation
-            if "RECOMMENDATION:" in mistral_text:
-                parts = mistral_text.split("RECOMMENDATION:")
-                insight_text = parts[0].replace("EXPLANATION:", "").strip()
+            # 2. SMART SPLITTING (Case-Insensitive Regex handles Mistral typos!)
+            parts = re.split(r'(?i)\*?\*?RECOMMENDATION:?\*?\*?', mistral_text)
+            
+            if len(parts) > 1:
+                # Remove the EXPLANATION header if it exists
+                insight_text = re.sub(r'(?i)\*?\*?EXPLANATION:?\*?\*?', '', parts[0]).strip()
                 rec_text = parts[1].strip()
             else:
-                insight_text = mistral_text
-                rec_text = "Please consult a healthcare professional for a detailed clinical action plan based on these results."
+                insight_text = mistral_text.replace("EXPLANATION:", "").strip()
+                rec_text = "Monitor patient vitals and consult a healthcare professional for a tailored action plan."
 
-            risk_level = "HIGH" if "High risk" in mistral_text or radiology_results.get("Lung_Cancer", 0) > 50 else "LOW"
+            risk_level = "HIGH" if cancer_score >= 50 else "LOW"
             return {"insight_text": insight_text, "recommendation_text": rec_text, "confidence": get_confidence(), "risk_level": risk_level}
             
     except Exception as e:
         print(f"⚠️ Mistral Connection Failed ({str(e)}). Triggering Fallback...")
 
-    # THE SILENT FALLBACK 
+    # THE SILENT FALLBACK (Unchanged)
     print("🛡️ Fallback Engine Activated: Generating deterministic clinical insight.")
     high_risks = []
     
@@ -285,11 +286,10 @@ def generate_clinical_insight(radiology_results, clinical_results):
     final_insight = f"Primary Multimodal Diagnosis: {primary_diagnosis}\n\nExplainable Insights:\n"
     for bullet in insight_bullets: final_insight += f"• {bullet}\n"
     
-    final_rec = "DiagnoAI Recommendation: " + " ".join(rec_bullets)
-
+    final_rec = " ".join(rec_bullets)
     risk_level = "HIGH" if high_risks else "LOW"
+    
     return {"insight_text": final_insight, "recommendation_text": final_rec, "confidence": get_confidence(), "risk_level": risk_level}
-
 
 # --- 4. SMART AUDIO GENERATOR (Strictly gTTS Free Version) ---
 def generate_audio_recommendation(text, lang="en"):
