@@ -1,4 +1,3 @@
-```markdown
 # 🩺 DiagnoAI
 **An Agentic AI diagnostic assistant powered by Multimodal Orchestration, deterministic filtering, and local Vision-Language Models.**
 
@@ -109,4 +108,3 @@ git commit -m "feat: Add Context-Aware Chatbot Co-Pilot with Glassmorphism UI"
 
 # 3. Push to your main branch on GitHub
 git push origin main
-```
